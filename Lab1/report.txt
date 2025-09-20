@@ -1,0 +1,45 @@
+# Query 1
+
+- Baseline: Use "SELECT ... FROM ... WHERE ... ORDER BY ..."; Runtime: ~0.06 sec
+- Try #1: Remove "ORDER BY ..." since I saw that order does not matter from Piazza; Runtime: ~0.04 sec
+- Try #2: Add index "idx_comments_project" to avoid going over the whole table; Runtime: ~0.04 sec
+- Try #3: Drop index "idx_comments_project" as it is duplicated with composite index "idx_comments_project_term"; Runtime: ~0.05 sec --> it is a little bit longer than Try #2 but acceptable
+- Conclusion: It is fast at the first time, also it is interesting if I remove the simple index but keep the composite index, it will make the runtime longer
+
+
+# Query 2
+
+- Baseline: Use "SELECT ... FROM ... WHERE ... AND ... ORDER BY ..."; Runtime: ~1.03sec
+- Try #1: Remove "ORDER BY ..." since I saw that order does not matter from Piazza; Runtime: ~1.04 sec
+- Try #2: Use index from q1; Runtime: ~0.04 sec
+- Try #3: Add composite index "idx_comments_project_term" to avoid going over the whole table while still keep index from q1; Runtime: ~0.07 sec
+- Try #4: Drop index from q1; Runtime: ~0.04 sec  --> so drop index from q1 only keep index of q2
+- Conclusion: It is also interesting that adding a composite index while keep the simple index will make the runtime longer than just use the simple index from q1 or just use composite index from q2. So just use index from q2
+
+
+# Query 3
+
+- Baseline: Use "SELECT ..., AVG(...) AS ... FROM ... GROUP BY ... ORDER BY ..."; Runtime: ~0.30 sec
+- Try #1: Remove "ORDER BY ..." since I saw that order does not matter from Piazza; Runtime: ~0.29 sec
+- Try #2: Use index "idx_cc_project_function"; Runtime: ~0.80 sec  --> so drop this index
+- Try #3: Use index "idx_cc_project_function_complexity"; Runtime: ~0.13 sec
+- Conclusion: By adding index "idx_cc_project_function_complexity" that contains 3 columns, reached the ~50% acceleration required.
+
+
+# Query 4
+
+- Baseline: Use set difference "(SELECT ... FROM ... WHERE ...) EXCEPT (SELECT ... FROM ... WHERE ...)"; Runtime: ~0.13 sec
+- Try #1: Use index "idx_cc_project_function_complexity" from q3; Runtime: ~0.08 sec
+- Try #2: (Method changed) Use group then exclude "SELECT ... FROM ... WHERE ... IN (...) GROUP BY ... HAVING ... AND ..." and index "idx_cc_function_project"; Runtime: ~0.13  --> so return to Try #1
+- Conclusion: Using set difference method and index from q3 is the best choice.
+
+
+# Query 5
+
+- Baseline: Use Left Outer Join then exclude null; Runtime: ~9.43 sec
+- Try #1: Change 'test_scores.test_value' to 'test_scores.username' for null checking; Runtime: ~8.85 sec
+- Try #2: Remove "ORDER BY ..." since I saw that order does not matter from Piazza; Runtime: ~8.41 sec
+- Try #3: Add keyword "DISTINCT"; Runtime: ~8.81 sec --> so remove it
+- Try #4: (Method changed) Use NOT EXISTS "SELECT ... FROM ... WHERE NOT EXIST (SELECT ... FROM ... WHERE)"; Runtime: ~0.99 sec
+- Try #5: Add keyword "DISTINCT"; Runtime: ~0.16 sec (with non-redundant output)
+- Conclusion: Use NOT EXISTS method, it reached x10 faster than Baseline. 
